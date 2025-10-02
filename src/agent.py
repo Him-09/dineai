@@ -5,12 +5,12 @@ from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 # Import the custom tools (package-relative)
-from tools.faq import restaurant_faq
-from tools.book_table import book_table
-from tools.modify_reservation import modify_reservation
-from tools.cancel_reservation import cancel_reservation, view_reservation
-from tools.check_availability import check_table_availability
-from tools.menu_search import menu_search
+from .tools.faq import restaurant_faq
+from .tools.book_table import book_table
+from .tools.modify_reservation import modify_reservation
+from .tools.cancel_reservation import cancel_reservation, view_reservation
+from .tools.check_availability import check_table_availability
+from .tools.menu_search import menu_search
 
 # Load environment variables
 load_dotenv()

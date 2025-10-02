@@ -9,7 +9,7 @@ from datetime import datetime
 import os
 
 # Import the agent logic
-from agent import run_agent
+from .agent import run_agent
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -222,7 +222,7 @@ async def demo_page():
 @app.get("/api/stats")
 async def get_api_stats():
     """Get API usage statistics for the demo"""
-    from db import supabase
+    from .db import supabase
     
     try:
         # Get total reservations count

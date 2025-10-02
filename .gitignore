@@ -79,6 +79,9 @@ web/build/
 README.md
 docs/
 
+# Optional voice requirements (not needed for web deployment)
+requirements-voice.txt
+
 # Deployment packages we created
 digitalocean-deploy/
 dineai-digitalocean-deploy.zip

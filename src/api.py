@@ -165,6 +165,11 @@ if os.path.exists(static_path):
     react_built = os.path.join(static_path, "app")
     if os.path.exists(react_built):
         app.mount("/app", StaticFiles(directory=react_built, html=True), name="react_app")
+        
+        # Mount React assets at root level for proper serving
+        react_assets = os.path.join(react_built, "assets")
+        if os.path.exists(react_assets):
+            app.mount("/assets", StaticFiles(directory=react_assets), name="react_assets")
 
 # Serve React app at root for production
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)

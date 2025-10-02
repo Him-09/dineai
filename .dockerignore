@@ -80,11 +80,15 @@ railway.toml
 *.mp3
 *.wav
 *.flac
-*.pdf
+# *.pdf  # Commented out to allow restaurant PDFs
 *.zip
 *.tar.gz
 *.rar
 *.7z
+
+# But allow specific restaurant PDFs needed by the application
+!RESTAURANT_FAQ.pdf
+!menu.pdf
 
 # Database files
 *.db

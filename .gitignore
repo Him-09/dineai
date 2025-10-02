@@ -57,9 +57,13 @@ logs/
 *.mkv
 *.mp3
 *.wav
-*.pdf
+# *.pdf  # Allow restaurant PDFs
 *.zip
 *.tar.gz
+
+# Allow specific restaurant PDFs
+!RESTAURANT_FAQ.pdf
+!menu.pdf
 
 # Desktop app
 desktop-app/

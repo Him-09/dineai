@@ -39,8 +39,9 @@ class HealthResponse(BaseModel):
 # Store for active conversations (in production, use a proper database)
 active_threads = {}
 
-@app.get("/", response_model=dict)
-async def api_root():
+# Move API info to /api endpoint instead of root
+@app.get("/api", response_model=dict)
+async def api_info():
     """API root endpoint with information"""
     return {
         "message": "Restaurant AI Agent API",
@@ -189,8 +190,8 @@ async def serve_frontend():
         }
     }
 
-# API routes with /api prefix for better organization
-@app.get("/api", response_model=dict)
+# Demo page endpoint
+@app.get("/demo", response_class=HTMLResponse)
 async def demo_page():
     """Serve the React demo app if built, otherwise the legacy static page."""
     root = os.path.dirname(os.path.dirname(__file__))

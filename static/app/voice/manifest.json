@@ -1,0 +1,12 @@
+{
+  "title": "Voice Agent Demo",
+  "description": "Single sample call handled by the voice agent.",
+  "items": [
+    {
+      "id": "sample-call",
+      "title": "Customer booking call",
+      "duration": "01:45",
+      "url": "/voice/sample-call.mp3"
+    }
+  ]
+}

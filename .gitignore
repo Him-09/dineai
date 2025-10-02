@@ -1,0 +1,103 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments (MOST IMPORTANT - 3.1GB!)
+.env
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Large files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.mp3
+*.wav
+*.pdf
+*.zip
+*.tar.gz
+
+# Desktop app
+desktop-app/
+
+# Web source (only need built files)
+web/src/
+web/node_modules/
+web/public/
+web/dist/
+web/build/
+
+# Keep only built static files
+!static/app/
+
+# Documentation
+*.md
+README.md
+docs/
+
+# Deployment packages we created
+digitalocean-deploy/
+dineai-digitalocean-deploy.zip
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Large binaries
+*.dll
+*.exe
+*.lib
+*.bin
+*.safetensors
+*.onnx
+*.pth
+*.pt
+
+# Backup files
+*.backup
+*.bak

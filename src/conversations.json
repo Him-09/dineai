@@ -1,0 +1,22 @@
+[
+  {
+    "sender": "User",
+    "message": "cancel my reservation",
+    "timestamp": "2025-08-07 20:03:38.078744"
+  },
+  {
+    "sender": "Agent",
+    "message": "Could you please provide me with the reservation ID for the cancellation? If you have a reason for the cancellation, you can share that as well.",
+    "timestamp": "2025-08-07 20:03:39.736907"
+  },
+  {
+    "sender": "User",
+    "message": "11",
+    "timestamp": "2025-08-07 20:03:51.546716"
+  },
+  {
+    "sender": "Agent",
+    "message": "Your reservation has been successfully cancelled. Here are the details:\n\n- **Reservation ID:** 11\n- **Name:** Test Customer 2\n- **Date:** August 20, 2025\n- **Time:** 7:00 PM\n- **Party Size:** 20 people\n- **Status:** Cancelled\n\nThe table is now available for other guests. If you need to make a new reservation in the future, feel free to reach out!",
+    "timestamp": "2025-08-07 20:03:55.914086"
+  }
+]

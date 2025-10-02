@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant AI Agent - Live Demo</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-utensils"></i>
+                    <h1>Restaurant AI Agent</h1>
+                </div>
+                <div class="status-indicator">
+                    <div id="connectionStatus" class="status-dot offline"></div>
+                    <span id="statusText">Connecting...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Agent Capabilities Panel -->
+            <aside class="capabilities-panel">
+                <div class="panel-header">
+                    <h3><i class="fas fa-robot"></i> Agent Capabilities</h3>
+                </div>
+                <div class="capabilities-list">
+                    <div class="capability-item">
+                        <i class="fas fa-calendar-plus"></i>
+                        <div>
+                            <h4>Table Booking</h4>
+                            <p>Book tables with natural language dates</p>
+                        </div>
+                    </div>
+                    <div class="capability-item">
+                        <i class="fas fa-search"></i>
+                        <div>
+                            <h4>Menu Search</h4>
+                            <p>AI-powered menu recommendations</p>
+                        </div>
+                    </div>
+                    <div class="capability-item">
+                        <i class="fas fa-edit"></i>
+                        <div>
+                            <h4>Reservation Management</h4>
+                            <p>Modify or cancel existing bookings</p>
+                        </div>
+                    </div>
+                    <div class="capability-item">
+                        <i class="fas fa-clock"></i>
+                        <div>
+                            <h4>Availability Check</h4>
+                            <p>Real-time table availability</p>
+                        </div>
+                    </div>
+                    <div class="capability-item">
+                        <i class="fas fa-question-circle"></i>
+                        <div>
+                            <h4>FAQ Support</h4>
+                            <p>Restaurant information & policies</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sample Prompts -->
+                <div class="sample-prompts">
+                    <h4><i class="fas fa-lightbulb"></i> Try These Prompts</h4>
+                    <div class="prompt-buttons">
+                        <button class="prompt-btn" onclick="sendSamplePrompt('Book a table for 4 people tomorrow at 7 PM')">
+                            <i class="fas fa-calendar-plus"></i>
+                            Book a table for 4 people tomorrow at 7 PM
+                        </button>
+                        <button class="prompt-btn" onclick="sendSamplePrompt('What vegetarian options do you have?')">
+                            <i class="fas fa-leaf"></i>
+                            What vegetarian options do you have?
+                        </button>
+                        <button class="prompt-btn" onclick="sendSamplePrompt('Check availability for Friday evening')">
+                            <i class="fas fa-clock"></i>
+                            Check availability for Friday evening
+                        </button>
+                        <button class="prompt-btn" onclick="sendSamplePrompt('What are your opening hours?')">
+                            <i class="fas fa-info-circle"></i>
+                            What are your opening hours?
+                        </button>
+                        <button class="prompt-btn" onclick="sendSamplePrompt('Recommend something with seafood')">
+                            <i class="fas fa-fish"></i>
+                            Recommend something with seafood
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Chat Interface -->
+            <section class="chat-container">
+                <div class="chat-header">
+                    <div class="agent-info">
+                        <div class="agent-avatar">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="agent-details">
+                            <h3>Restaurant AI Assistant</h3>
+                            <p id="agentStatus">Ready to help with bookings and questions</p>
+                        </div>
+                    </div>
+                    <div class="chat-actions">
+                        <button id="clearChat" class="action-btn" title="Clear conversation">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <button id="exportChat" class="action-btn" title="Export conversation">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="welcome-message">
+                        <div class="agent-avatar">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="message-content">
+                            <h4>Welcome to our Restaurant! 🍽️</h4>
+                            <p>I'm your AI assistant, ready to help you with:</p>
+                            <ul>
+                                <li>Table reservations and bookings</li>
+                                <li>Menu recommendations and searches</li>
+                                <li>Restaurant information and policies</li>
+                                <li>Checking table availability</li>
+                                <li>Managing existing reservations</li>
+                            </ul>
+                            <p>Just type your message below or try one of the sample prompts on the left!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-container">
+                    <div class="input-wrapper">
+                        <div class="input-group">
+                            <textarea 
+                                id="messageInput" 
+                                placeholder="Ask me about reservations, menu, availability, or any restaurant questions..."
+                                rows="1"
+                                maxlength="500"
+                            ></textarea>
+                            <div class="input-actions">
+                                <button id="sendButton" class="send-btn" disabled>
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="input-footer">
+                            <div class="char-counter">
+                                <span id="charCount">0</span>/500
+                            </div>
+                            <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                                <i class="fas fa-robot"></i>
+                                <span>AI is thinking...</span>
+                                <div class="typing-dots">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="tech-info">
+                    <span><i class="fas fa-brain"></i> Powered by OpenAI GPT-4o-mini</span>
+                    <span><i class="fas fa-database"></i> Supabase Database</span>
+                    <span><i class="fas fa-code"></i> LangChain ReAct Agent</span>
+                </div>
+                <div class="demo-info">
+                    <span>🚀 Live Demo - Real AI Agent Interaction</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <i class="fas fa-robot"></i>
+            <p>Initializing AI Agent...</p>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

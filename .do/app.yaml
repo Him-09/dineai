@@ -1,0 +1,32 @@
+name: dineai
+services:
+- name: web
+  source_dir: /
+  github:
+    repo: your-username/your-repo-name
+    branch: main
+  run_command: uvicorn src.api:app --host 0.0.0.0 --port $PORT
+  environment_slug: python
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  http_port: 8080
+  envs:
+  - key: OPENAI_API_KEY
+    scope: RUN_TIME
+    type: SECRET
+  - key: SUPABASE_URL
+    scope: RUN_TIME
+    type: SECRET
+  - key: SUPABASE_KEY
+    scope: RUN_TIME
+    type: SECRET
+  - key: ENVIRONMENT
+    scope: RUN_TIME
+    value: production
+  - key: ALLOWED_ORIGINS
+    scope: RUN_TIME
+    value: https://dineai.tech
+  - key: PORT
+    scope: RUN_TIME
+    value: "8080"
+  dockerfile_path: Dockerfile

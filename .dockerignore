@@ -1,0 +1,196 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+
+# Python site-packages (in case they're copied locally)
+site-packages/
+Lib/
+Scripts/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Node.js (if you have any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Git
+.git/
+.gitignore
+
+# Railway files (not needed for DigitalOcean)
+railway.json
+railway.toml
+.railwayignore
+*railway*
+
+# Large files and unnecessary directories
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.mp3
+*.wav
+*.flac
+*.pdf
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+.temp/
+
+# Documentation build files
+docs/build/
+site/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Model files (often large)
+*.pkl
+*.pickle
+*.joblib
+*.h5
+*.hdf5
+*.model
+
+# Desktop app (don't deploy this)
+desktop-app/
+
+# Web source files (we only need the built static files)
+web/src/
+web/node_modules/
+web/public/
+web/dist/
+web/build/
+web/*.json
+web/*.js
+web/*.ts
+web/*.config.*
+
+# Keep only the built static files
+!static/app/
+
+# Backup files
+*.backup
+*.bak
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Test files
+.pytest_cache/
+.tox/
+
+# Large AI model files (if any)
+*.bin
+*.safetensors
+*.onnx
+*.pb
+
+# PyTorch files
+*.pth
+*.pt
+dnnl.lib
+torch_cpu.dll
+torch_cpu.lib
+torch_python.dll
+kineto.lib
+
+# Qt/Electron files
+Qt6*.dll
+electron.exe
+chromadb_rust_bindings.pyd
+app-builder*
+icudtl.dat
+
+# LiveKit files
+livekit_ffi.dll
+liblivekit_nc_plugin.dll
+
+# Video/Audio codec files
+libx265*.dll
+avcodec*.dll
+
+# Additional large file types
+*.iso
+*.dmg
+*.exe
+*.msi
+
+# Conda environment
+.conda/
+conda-meta/
+
+# PyTorch models
+*.pth
+*.pt
+
+# TensorFlow models
+*.tflite
+
+# Hugging Face cache
+.cache/
+transformers/

@@ -170,6 +170,11 @@ if os.path.exists(static_path):
         react_assets = os.path.join(react_built, "assets")
         if os.path.exists(react_assets):
             app.mount("/assets", StaticFiles(directory=react_assets), name="react_assets")
+            
+        # Mount voice files at root level for demo functionality
+        voice_path = os.path.join(react_built, "voice")
+        if os.path.exists(voice_path):
+            app.mount("/voice", StaticFiles(directory=voice_path), name="voice_files")
 
 # Serve React app at root for production
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)

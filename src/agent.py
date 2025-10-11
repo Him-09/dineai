@@ -53,7 +53,7 @@ CONVERSATION FLOW FOR BOOKINGS:
 
 Be friendly, helpful, and ensure all required information is collected before making any reservation."""
 
-# Create ReAct agent with memory and system prompt
+# Create ReAct agent with memory
 agent = create_react_agent(
     model=llm, 
     tools=tools,
@@ -74,17 +74,34 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
     try:
         print(f"Processing query: {input_text}")
         
-        # LangGraph agents with memory expect input as a dictionary with "messages" key
-        # and a config with thread_id for memory persistence
-        config = {"configurable": {"thread_id": thread_id}}
+        # Create proper config for LangGraph with correct typing
+        from langchain_core.runnables.config import RunnableConfig
+        config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
         
-        # Include system prompt and user message
-        messages = [
-            ("system", system_prompt),
-            ("user", input_text)
-        ]
+        # Check if this is a new conversation by trying to get existing state
+        try:
+            # Try to get the current state
+            current_state = agent.get_state(config)
+            is_new_conversation = not current_state or not current_state.values.get("messages")
+        except:
+            is_new_conversation = True
         
-        response = agent.invoke({"messages": messages}, config=config)
+        # Prepare messages
+        if is_new_conversation:
+            # For new conversations, include system prompt
+            messages = [
+                ("system", system_prompt),
+                ("user", input_text)
+            ]
+        else:
+            # For existing conversations, just send user message
+            messages = [("user", input_text)]
+        
+        # Send to agent
+        response = agent.invoke(
+            {"messages": messages}, 
+            config=config
+        )
         
         # Extract the final message from the response
         if response and "messages" in response:

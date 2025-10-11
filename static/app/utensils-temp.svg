@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <rect width="32" height="32" fill="#00e676"/>
+  <g fill="white" transform="translate(8, 6)">
+    <!-- Fork -->
+    <path d="M3 2 L3 6 L2 7 L2 14 L4 14 L4 7 L3 6 L3 2"/>
+    <path d="M5 2 L5 6 L4 7 L6 7 L5 6 L5 2"/>
+    <path d="M7 2 L7 6 L6 7 L8 7 L7 6 L7 2"/>
+    <!-- Knife -->
+    <path d="M11 2 L11 7 L12 8 L12 14 L14 14 L14 8 L15 7 L15 2 L11 2"/>
+  </g>
+</svg>

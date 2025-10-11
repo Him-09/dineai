@@ -57,8 +57,7 @@ Be friendly, helpful, and ensure all required information is collected before ma
 agent = create_react_agent(
     model=llm, 
     tools=tools,
-    checkpointer=memory,
-    state_modifier=system_prompt
+    checkpointer=memory
 )
 
 def run_agent(input_text: str, thread_id: str = "default") -> str:
@@ -78,7 +77,14 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
         # LangGraph agents with memory expect input as a dictionary with "messages" key
         # and a config with thread_id for memory persistence
         config = {"configurable": {"thread_id": thread_id}}
-        response = agent.invoke({"messages": [("user", input_text)]}, config=config)
+        
+        # Include system prompt and user message
+        messages = [
+            ("system", system_prompt),
+            ("user", input_text)
+        ]
+        
+        response = agent.invoke({"messages": messages}, config=config)
         
         # Extract the final message from the response
         if response and "messages" in response:

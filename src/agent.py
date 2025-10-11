@@ -64,12 +64,11 @@ USING CUSTOMER NAMES:
 
 Remember: You have access to tools for checking availability, making reservations, searching the menu, and answering FAQs. Use them proactively to provide the best service possible."""
 
-# Create ReAct agent with memory and system prompt
+# Create ReAct agent with memory (system prompt will be added in run_agent function)
 agent = create_react_agent(
     model=llm, 
     tools=tools,
-    checkpointer=memory,
-    state_modifier=SystemMessage(content=RESTAURANT_SYSTEM_PROMPT)
+    checkpointer=memory
 )
 
 def run_agent(input_text: str, thread_id: str = "default") -> str:
@@ -86,10 +85,17 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
     try:
         print(f"Processing query: {input_text}")
         
+        # Prepend system prompt to guide the agent's behavior
+        enhanced_input = f"""System Instructions: {RESTAURANT_SYSTEM_PROMPT}
+
+Customer: {input_text}
+
+Please respond as a professional restaurant AI assistant following the instructions above."""
+        
         # LangGraph agents with memory expect input as a dictionary with "messages" key
         # and a config with thread_id for memory persistence
         config = {"configurable": {"thread_id": thread_id}}
-        response = agent.invoke({"messages": [("user", input_text)]}, config=config)
+        response = agent.invoke({"messages": [("user", enhanced_input)]}, config=config)  # type: ignore
         
         # Extract the final message from the response
         if response and "messages" in response:

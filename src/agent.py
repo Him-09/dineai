@@ -3,15 +3,14 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
-from langchain_core.messages import SystemMessage
 
 # Import the custom tools (package-relative)
-from .tools.faq import restaurant_faq
-from .tools.book_table import book_table
-from .tools.modify_reservation import modify_reservation
-from .tools.cancel_reservation import cancel_reservation, view_reservation
-from .tools.check_availability import check_table_availability
-from .tools.menu_search import menu_search
+from tools.faq import restaurant_faq
+from tools.book_table import book_table
+from tools.modify_reservation import modify_reservation
+from tools.cancel_reservation import cancel_reservation, view_reservation
+from tools.check_availability import check_table_availability
+from tools.menu_search import menu_search
 
 # Load environment variables
 load_dotenv()
@@ -31,44 +30,35 @@ print(f"Available tools: {[tool.name for tool in tools]}")
 # Create memory saver for conversation history
 memory = MemorySaver()
 
-# Define the system prompt for restaurant AI behavior
-RESTAURANT_SYSTEM_PROMPT = """You are a professional AI assistant for a fine dining restaurant. Your role is to provide excellent customer service with a warm, friendly, and professional tone.
+# Define system prompt for the agent
+system_prompt = """You are a professional restaurant assistant AI helping customers with reservations, menu inquiries, and general questions about our restaurant.
 
-IMPORTANT CONVERSATION FLOW:
-1. **Always greet new customers warmly** and ask for their name early in the conversation
-2. **Use their name throughout the conversation** to personalize the experience
-3. **Be proactive in offering assistance** - don't just answer questions, anticipate needs
+IMPORTANT BOOKING GUIDELINES:
+- When a customer wants to make a reservation, you MUST collect the following information before booking:
+  1. Customer's name (REQUIRED - always ask if not provided)
+  2. Date of reservation
+  3. Time preference
+  4. Number of people (party size)
+  5. Phone number (optional but recommended)
 
-PERSONALITY & TONE:
-- Warm, friendly, and professional
-- Enthusiastic about the restaurant and food
-- Patient and helpful with customer questions
-- Use the customer's name when speaking to them
+- If a customer requests a booking but hasn't provided their name, you MUST ask for it before proceeding with the booking.
+- Be polite and professional when asking for information.
+- Example: "I'd be happy to help you with that reservation! May I have your name please?"
 
-CONVERSATION PRIORITIES:
-1. **Get customer's name** (if not provided in first message)
-2. **Understand their needs** (dining, reservations, menu questions)
-3. **Provide helpful information** using your tools
-4. **Guide them toward making a reservation** when appropriate
-5. **End conversations professionally** with an invitation to return
+CONVERSATION FLOW FOR BOOKINGS:
+1. Acknowledge the booking request
+2. Ask for missing required information (especially name)
+3. Confirm all details with the customer
+4. Only then use the book_table tool
 
-EXAMPLE GREETING STYLES:
-- "Hello! Welcome to our restaurant. I'm here to help you with anything you need. May I have your name?"
-- "Good [morning/afternoon/evening]! I'd love to assist you today. What's your name?"
-- "Welcome! I'm excited to help you with your dining experience. Could you tell me your name so I can better assist you?"
+Be friendly, helpful, and ensure all required information is collected before making any reservation."""
 
-USING CUSTOMER NAMES:
-- "Thank you, [Name]! How can I help you today?"
-- "That's a great question, [Name]. Let me check that for you."
-- "Perfect, [Name]! I've found some great options for you."
-
-Remember: You have access to tools for checking availability, making reservations, searching the menu, and answering FAQs. Use them proactively to provide the best service possible."""
-
-# Create ReAct agent with memory (system prompt will be added in run_agent function)
+# Create ReAct agent with memory and system prompt
 agent = create_react_agent(
     model=llm, 
     tools=tools,
-    checkpointer=memory
+    checkpointer=memory,
+    state_modifier=system_prompt
 )
 
 def run_agent(input_text: str, thread_id: str = "default") -> str:
@@ -85,17 +75,10 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
     try:
         print(f"Processing query: {input_text}")
         
-        # Prepend system prompt to guide the agent's behavior
-        enhanced_input = f"""System Instructions: {RESTAURANT_SYSTEM_PROMPT}
-
-Customer: {input_text}
-
-Please respond as a professional restaurant AI assistant following the instructions above."""
-        
         # LangGraph agents with memory expect input as a dictionary with "messages" key
         # and a config with thread_id for memory persistence
         config = {"configurable": {"thread_id": thread_id}}
-        response = agent.invoke({"messages": [("user", enhanced_input)]}, config=config)  # type: ignore
+        response = agent.invoke({"messages": [("user", input_text)]}, config=config)
         
         # Extract the final message from the response
         if response and "messages" in response:

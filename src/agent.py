@@ -43,13 +43,15 @@ IMPORTANT: When handling reservations, carefully review the conversation history
 
 Be efficient and avoid repetitive questions."""
 
-# Create ReAct agent with memory and system prompt  
+# Create ReAct agent with memory
 agent = create_react_agent(
     model=llm,
     tools=tools,
-    checkpointer=memory,
-    state_modifier=system_prompt
+    checkpointer=memory
 )
+
+# Track which threads have received the system prompt
+seen_threads = set()
 
 
 
@@ -72,7 +74,14 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
         config = {"configurable": {"thread_id": thread_id}}
         
         # Prepare messages for this turn
-        messages = [("user", input_text)]
+        messages = []
+        
+        # Inject system prompt only once per thread
+        if thread_id not in seen_threads:
+            messages.append(("system", system_prompt))
+            seen_threads.add(thread_id)
+        
+        messages.append(("user", input_text))
 
         response = agent.invoke({"messages": messages}, config=config)
         

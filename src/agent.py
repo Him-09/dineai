@@ -53,11 +53,21 @@ CONVERSATION FLOW FOR BOOKINGS:
 
 Be friendly, helpful, and ensure all required information is collected before making any reservation."""
 
-# Create ReAct agent with memory
+# Create ReAct agent with memory and state modifier for system prompt
+# Using a callable state modifier to inject system prompt
+def state_modifier(state):
+    """Inject system prompt into the conversation state"""
+    messages = state.get("messages", [])
+    # Check if system message already exists
+    if not messages or messages[0][0] != "system":
+        return [("system", system_prompt)] + messages
+    return messages
+
 agent = create_react_agent(
     model=llm, 
     tools=tools,
-    checkpointer=memory
+    checkpointer=memory,
+    state_modifier=state_modifier
 )
 
 def run_agent(input_text: str, thread_id: str = "default") -> str:
@@ -74,32 +84,12 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
     try:
         print(f"Processing query: {input_text}")
         
-        # Create proper config for LangGraph with correct typing
-        from langchain_core.runnables.config import RunnableConfig
-        config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
+        # Create config for thread-based memory
+        config = {"configurable": {"thread_id": thread_id}}
         
-        # Check if this is a new conversation by trying to get existing state
-        try:
-            # Try to get the current state
-            current_state = agent.get_state(config)
-            is_new_conversation = not current_state or not current_state.values.get("messages")
-        except:
-            is_new_conversation = True
-        
-        # Prepare messages
-        if is_new_conversation:
-            # For new conversations, include system prompt
-            messages = [
-                ("system", system_prompt),
-                ("user", input_text)
-            ]
-        else:
-            # For existing conversations, just send user message
-            messages = [("user", input_text)]
-        
-        # Send to agent
+        # Send user message - state_modifier will handle system prompt injection
         response = agent.invoke(
-            {"messages": messages}, 
+            {"messages": [("user", input_text)]}, 
             config=config
         )
         

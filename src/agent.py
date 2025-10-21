@@ -53,21 +53,11 @@ CONVERSATION FLOW FOR BOOKINGS:
 
 Be friendly, helpful, and ensure all required information is collected before making any reservation."""
 
-# Create ReAct agent with memory and state modifier for system prompt
-# Using a callable state modifier to inject system prompt
-def state_modifier(state):
-    """Inject system prompt into the conversation state"""
-    messages = state.get("messages", [])
-    # Check if system message already exists
-    if not messages or messages[0][0] != "system":
-        return [("system", system_prompt)] + messages
-    return messages
-
+# Create ReAct agent with memory
 agent = create_react_agent(
-    model=llm, 
-    tools=tools,
-    checkpointer=memory,
-    state_modifier=state_modifier
+    llm, 
+    tools,
+    checkpointer=memory
 )
 
 def run_agent(input_text: str, thread_id: str = "default") -> str:
@@ -87,9 +77,27 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
         # Create config for thread-based memory
         config = {"configurable": {"thread_id": thread_id}}
         
-        # Send user message - state_modifier will handle system prompt injection
+        # Check if this is a new conversation
+        try:
+            state = agent.get_state(config)
+            has_history = state and state.values.get("messages")
+        except:
+            has_history = False
+        
+        # Prepare messages - include system prompt only for new conversations
+        if not has_history:
+            # New conversation: include system prompt
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": input_text}
+            ]
+        else:
+            # Existing conversation: just add user message
+            messages = [{"role": "user", "content": input_text}]
+        
+        # Send to agent
         response = agent.invoke(
-            {"messages": [("user", input_text)]}, 
+            {"messages": messages}, 
             config=config
         )
         

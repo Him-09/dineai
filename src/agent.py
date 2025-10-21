@@ -32,15 +32,6 @@ memory = MemorySaver()
 
 # Define system prompt for the agent
 system_prompt = """You are a professional restaurant assistant AI helping customers with reservations, menu inquiries, and general questions about our restaurant.
-
-IMPORTANT: You have access to conversation history. Always check what information the customer has already provided before asking for it again.
-
-When handling reservations:
-- Review the conversation history to see what information has already been collected
-- Only ask for missing information, never repeat questions
-- Required information: customer name, date, time, party size
-- Once you have all required information, proceed with the booking using the book_table tool
-
 Be friendly, helpful, and respect that customers have already given you information."""
 
 # Create ReAct agent with memory and system prompt  

@@ -34,12 +34,19 @@ memory = MemorySaver()
 # Define system prompt for the agent
 system_prompt = """You are a professional restaurant assistant AI helping customers with reservations, menu inquiries, and general questions about our restaurant.
 
-Conversation policy:
-- Always review conversation history before asking questions.
-- Maintain an internal checklist for bookings: name, date, time, party size, optional phone.
-- Ask ONLY for missing items. Do not repeat requests for information already provided earlier.
-- When appropriate, confirm what you have (e.g., "I have you down for 4 guests tomorrow at 7 PM") and ask just the missing field in a single compact question.
-- Once all required fields are available, proceed to use the book_table tool.
+CRITICAL BOOKING RULES:
+1. NEVER ask for information that has already been provided in the conversation.
+2. Before asking ANY question, check the conversation history and the [BOOKING CONTEXT] in the user message.
+3. The [BOOKING CONTEXT] shows ALL information already collected: name, date, time, party_size, phone.
+4. ONLY ask for fields that show "unknown" in the booking context.
+5. When all required fields (name, date, time, party_size) are known, immediately call the book_table tool.
+6. Phone is optional - if user declines, proceed to book immediately.
+
+Conversation flow:
+- Review the [BOOKING CONTEXT] section carefully before responding
+- Ask ONLY for missing items in a single, compact question
+- Never repeat requests for information already in the context
+- When you have name, date, time, and party_size, call book_table immediately
 
 Tone: warm, concise, professional."""
 
@@ -59,7 +66,8 @@ seen_threads = set()
 booking_state: dict[str, dict[str, str]] = {}
 
 NAME_PATTERNS = [
-    re.compile(r"(?:my name is|i am|i'm|this is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)", re.I),
+    re.compile(r"(?:my name is|i am|i'm|this is|for|name:?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)", re.I),
+    re.compile(r"\b([A-Z][a-z]+)\s+(?:at|for)\s+\d", re.I),  # "Erik at 9pm"
 ]
 DATE_PATTERNS = [
     re.compile(r"\b(today|tomorrow|tonight)\b", re.I),
@@ -68,12 +76,12 @@ DATE_PATTERNS = [
     re.compile(r"\b(\d{1,2}/\d{1,2}(?:/\d{2,4})?)\b"),        # 10/21 or 10/21/2025
 ]
 TIME_PATTERNS = [
+    re.compile(r"\bat\s+(\d{1,2}(?::\d{2})?\s?(?:am|pm))\b", re.I),  # "at 9pm"
     re.compile(r"\b(\d{1,2}:\d{2}\s?(?:am|pm)?)\b", re.I),    # 7:30 pm
     re.compile(r"\b(\d{1,2}\s?(?:am|pm))\b", re.I),            # 7 pm
-    re.compile(r"\b(at\s+\d{1,2}(?::\d{2})?\s?(?:am|pm)?)\b", re.I),
 ]
 PARTY_PATTERNS = [
-    re.compile(r"\bfor\s+(\d+)\b"),
+    re.compile(r"\b(?:table\s+)?for\s+(\d+)(?:\s+(?:people|guests|persons))?\b", re.I),  # "for 4" or "table for 4"
     re.compile(r"\b(\d+)\s+(?:people|guests|persons)\b", re.I),
 ]
 PHONE_PATTERNS = [
@@ -98,9 +106,11 @@ def extract_booking_info(text: str) -> dict[str, str]:
     for pat in TIME_PATTERNS:
         m = pat.search(text)
         if m:
-            # drop leading 'at '
+            # Extract time and clean it up
             val = m.group(1).strip()
-            info["time"] = re.sub(r"^at\s+", "", val, flags=re.I)
+            # Remove leading 'at ' if present
+            val = re.sub(r"^at\s+", "", val, flags=re.I)
+            info["time"] = val
             break
     # party size
     for pat in PARTY_PATTERNS:
@@ -126,18 +136,25 @@ def summarize_booking_info(info: dict[str, str]) -> str:
     missing = [k for k in required if not has(k)]
 
     summary = (
-        f"Known booking details so far -> name: {val('name')}, date: {val('date')}, "
-        f"time: {val('time')}, party_size: {val('party_size')}, phone: {val('phone')}.\n"
+        f"BOOKING INFO ALREADY COLLECTED:\n"
+        f"- Name: {val('name')}\n"
+        f"- Date: {val('date')}\n"
+        f"- Time: {val('time')}\n"
+        f"- Party size: {val('party_size')}\n"
+        f"- Phone: {val('phone')} (optional)\n\n"
     )
 
     if missing:
         summary += (
-            "Missing fields: " + ", ".join(missing) + ". "
-            "Ask ONLY for these missing items in a single, concise question. Do not ask for any already-known field."
+            f"MISSING REQUIRED FIELDS: {', '.join(missing)}\n"
+            f"ACTION: Ask ONLY for the missing fields listed above. DO NOT ask for fields that are already known.\n"
+            f"DO NOT ask for: {', '.join([k for k in required if has(k)])}"
         )
     else:
         summary += (
-            "All required fields are present. Proceed to use the book_table tool now without asking for more details."
+            "ALL REQUIRED FIELDS COLLECTED!\n"
+            "ACTION: If user declined phone (said 'no'), immediately call book_table tool NOW with the information above. "
+            "Do not ask for anything else."
         )
 
     return summary

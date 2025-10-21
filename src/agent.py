@@ -176,14 +176,17 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
             messages.append(("system", system_prompt))
             seen_threads.add(thread_id)
 
-        # Inject a lightweight dynamic context with the currently known booking details
+        # Build user message with embedded booking context if available
+        # This way the LLM sees it as part of the user's context, not a separate system instruction
+        user_message = input_text
         if state:
             summary_msg = summarize_booking_info(state)
             print(f"[agent] summary for {thread_id}: {summary_msg}")
-            messages.append(("system", summary_msg))
+            # Prepend the booking state to the user message as context
+            user_message = f"[BOOKING CONTEXT: {summary_msg}]\n\nUser message: {input_text}"
 
         # Append the user's message; the checkpointer supplies prior history
-        messages.append(("user", input_text))
+        messages.append(("user", user_message))
 
         response = agent.invoke({"messages": messages}, config=config)
         

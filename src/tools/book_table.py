@@ -8,7 +8,7 @@ from langchain.tools import tool
 
 # Add the src directory to the path to import db module
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from ..db import supabase
+from db import supabase
 
 # Load environment variables
 load_dotenv()

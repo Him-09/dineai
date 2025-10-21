@@ -15,6 +15,7 @@ langchain-chroma>=0.1.0
 langgraph>=0.1.0
 openai>=1.0.0
 
+
 # Vector database (lightweight)
 chromadb>=0.4.0
 

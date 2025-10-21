@@ -4,7 +4,7 @@ Simplified CRM module for storing customer information to recognize repeat custo
 import logging
 from datetime import datetime
 from typing import Optional, Dict, Any
-from .db import supabase
+from db import supabase
 
 logger = logging.getLogger("restaurant-crm")
 

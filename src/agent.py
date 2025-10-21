@@ -15,21 +15,6 @@ from .tools.menu_search import menu_search
 # Load environment variables
 load_dotenv()
 
-# Create the LLM with OpenAI API
-llm = ChatOpenAI(
-    model="gpt-4o-mini",  # Use GPT-4o-mini for better tool calling
-    temperature=0.1,  # Lower temperature for more consistent responses
-    openai_api_key=os.getenv("OPENAI_API_KEY")
-)
-
-# Directly use the custom tools instead of load_tools
-tools = [book_table, modify_reservation, cancel_reservation, view_reservation, check_table_availability, restaurant_faq, menu_search]
-
-print(f"Available tools: {[tool.name for tool in tools]}")
-
-# Create memory saver for conversation history
-memory = MemorySaver()
-
 # Define system prompt for the agent
 system_prompt = """You are a professional restaurant assistant AI helping customers with reservations, menu inquiries, and general questions about our restaurant.
 
@@ -49,13 +34,34 @@ CONVERSATION FLOW FOR BOOKINGS:
 1. Acknowledge the booking request
 2. Ask for missing required information (especially name)
 3. Confirm all details with the customer
-4. Only then use the book_table tool
+4. Only then use the book_table tool"""
 
-Be friendly, helpful, and ensure all required information is collected before making any reservation."""
+# Create the LLM with OpenAI API
+llm = ChatOpenAI(
+    model="gpt-4o-mini",  # Use GPT-4o-mini for better tool calling
+    temperature=0.1,  # Lower temperature for more consistent responses
+    openai_api_key=os.getenv("OPENAI_API_KEY")
+)
 
-# Create ReAct agent with memory
+# Bind the system prompt to the LLM using ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+prompt = ChatPromptTemplate.from_messages([
+    ("system", system_prompt),
+    MessagesPlaceholder(variable_name="messages"),
+])
+llm_with_prompt = prompt | llm
+
+# Directly use the custom tools instead of load_tools
+tools = [book_table, modify_reservation, cancel_reservation, view_reservation, check_table_availability, restaurant_faq, menu_search]
+
+print(f"Available tools: {[tool.name for tool in tools]}")
+
+# Create memory saver for conversation history
+memory = MemorySaver()
+
+# Create ReAct agent with memory using the LLM with bound system prompt
 agent = create_react_agent(
-    llm, 
+    llm_with_prompt, 
     tools,
     checkpointer=memory
 )
@@ -77,27 +83,10 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
         # Create config for thread-based memory
         config = {"configurable": {"thread_id": thread_id}}
         
-        # Check if this is a new conversation
-        try:
-            state = agent.get_state(config)
-            has_history = state and state.values.get("messages")
-        except:
-            has_history = False
-        
-        # Prepare messages - include system prompt only for new conversations
-        if not has_history:
-            # New conversation: include system prompt
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": input_text}
-            ]
-        else:
-            # Existing conversation: just add user message
-            messages = [{"role": "user", "content": input_text}]
-        
-        # Send to agent
+        # Simply send the user message - the checkpointer will handle memory
+        # The system prompt needs to be handled differently
         response = agent.invoke(
-            {"messages": messages}, 
+            {"messages": [("user", input_text)]}, 
             config=config
         )
         

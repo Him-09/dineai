@@ -45,11 +45,14 @@ Be friendly, helpful, and respect that customers have already given you informat
 
 # Create ReAct agent with memory and system prompt  
 agent = create_react_agent(
-    model=llm, 
+    model=llm,
     tools=tools,
-    checkpointer=memory,
-    state_modifier=system_prompt
+    checkpointer=memory
 )
+
+# Keep track of which thread_ids have already received the system prompt
+# This is process-local and ensures the system prompt is only injected once per conversation thread
+seen_threads = set()
 
 def run_agent(input_text: str, thread_id: str = "default") -> str:
     """
@@ -69,9 +72,17 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
         # Just pass the new user message and the thread_id for memory persistence
         config = {"configurable": {"thread_id": thread_id}}
         
-        # Always send only the new user message
-        # The checkpointer will automatically include the full conversation history
-        response = agent.invoke({"messages": [("user", input_text)]}, config=config)
+        # Decide whether to include the system prompt for this thread
+        messages = []
+        if thread_id not in seen_threads:
+            # inject system prompt only the first time we see this thread
+            messages.append(("system", system_prompt))
+            seen_threads.add(thread_id)
+
+        # Always append the new user message; the checkpointer will supply prior history
+        messages.append(("user", input_text))
+
+        response = agent.invoke({"messages": messages}, config=config)
         
         # Extract the final message from the response
         if response and "messages" in response:

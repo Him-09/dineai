@@ -34,130 +34,24 @@ memory = MemorySaver()
 # Define system prompt for the agent
 system_prompt = """You are a professional restaurant assistant AI helping customers with reservations, menu inquiries, and general questions about our restaurant.
 
-CRITICAL BOOKING RULES:
-1. NEVER ask for information that has already been provided in the conversation.
-2. Before asking ANY question, check the conversation history and the [BOOKING CONTEXT] in the user message.
-3. The [BOOKING CONTEXT] shows ALL information already collected: name, date, time, party_size, phone.
-4. ONLY ask for fields that show "unknown" in the booking context.
-5. When all required fields (name, date, time, party_size) are known, immediately call the book_table tool.
-6. Phone is optional - if user declines, proceed to book immediately.
+IMPORTANT: When handling reservations, carefully review the conversation history before asking questions. 
+- For booking a table, you need: customer name, date, time, and party size (phone is optional)
+- NEVER ask for information the customer has already provided
+- Check previous messages to see what information you already have
+- Once you have all required information (name, date, time, party_size), call the book_table tool immediately
+- If customer says "no" to phone number, proceed with booking using the information you have
 
-Conversation flow:
-- Review the [BOOKING CONTEXT] section carefully before responding
-- Ask ONLY for missing items in a single, compact question
-- Never repeat requests for information already in the context
-- When you have name, date, time, and party_size, call book_table immediately
-
-Tone: warm, concise, professional."""
+Be efficient and avoid repetitive questions."""
 
 # Create ReAct agent with memory and system prompt  
 agent = create_react_agent(
     model=llm,
     tools=tools,
-    checkpointer=memory
+    checkpointer=memory,
+    state_modifier=system_prompt
 )
 
-# Keep track of which thread_ids have already received the system prompt
-# This is process-local and ensures the system prompt is only injected once per conversation thread
-seen_threads = set()
 
-# Lightweight per-thread slot tracker (process-local)
-# Stores what booking details we've already extracted from user messages
-booking_state: dict[str, dict[str, str]] = {}
-
-NAME_PATTERNS = [
-    re.compile(r"(?:my name is|i am|i'm|this is|for|name:?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)", re.I),
-    re.compile(r"\b([A-Z][a-z]+)\s+(?:at|for)\s+\d", re.I),  # "Erik at 9pm"
-]
-DATE_PATTERNS = [
-    re.compile(r"\b(today|tomorrow|tonight)\b", re.I),
-    re.compile(r"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", re.I),
-    re.compile(r"\b(\d{4}-\d{1,2}-\d{1,2})\b"),               # 2025-10-21
-    re.compile(r"\b(\d{1,2}/\d{1,2}(?:/\d{2,4})?)\b"),        # 10/21 or 10/21/2025
-]
-TIME_PATTERNS = [
-    re.compile(r"\bat\s+(\d{1,2}(?::\d{2})?\s?(?:am|pm))\b", re.I),  # "at 9pm"
-    re.compile(r"\b(\d{1,2}:\d{2}\s?(?:am|pm)?)\b", re.I),    # 7:30 pm
-    re.compile(r"\b(\d{1,2}\s?(?:am|pm))\b", re.I),            # 7 pm
-]
-PARTY_PATTERNS = [
-    re.compile(r"\b(?:table\s+)?for\s+(\d+)(?:\s+(?:people|guests|persons))?\b", re.I),  # "for 4" or "table for 4"
-    re.compile(r"\b(\d+)\s+(?:people|guests|persons)\b", re.I),
-]
-PHONE_PATTERNS = [
-    re.compile(r"\b(\+?\d[\d\-\s]{7,}\d)\b"),
-]
-
-def extract_booking_info(text: str) -> dict[str, str]:
-    info: dict[str, str] = {}
-    # name
-    for pat in NAME_PATTERNS:
-        m = pat.search(text)
-        if m:
-            info["name"] = m.group(1).strip()
-            break
-    # date
-    for pat in DATE_PATTERNS:
-        m = pat.search(text)
-        if m:
-            info["date"] = m.group(1).strip()
-            break
-    # time
-    for pat in TIME_PATTERNS:
-        m = pat.search(text)
-        if m:
-            # Extract time and clean it up
-            val = m.group(1).strip()
-            # Remove leading 'at ' if present
-            val = re.sub(r"^at\s+", "", val, flags=re.I)
-            info["time"] = val
-            break
-    # party size
-    for pat in PARTY_PATTERNS:
-        m = pat.search(text)
-        if m:
-            info["party_size"] = m.group(1).strip()
-            break
-    # phone
-    for pat in PHONE_PATTERNS:
-        m = pat.search(text)
-        if m:
-            info["phone"] = m.group(1).strip()
-            break
-    return info
-
-def summarize_booking_info(info: dict[str, str]) -> str:
-    def has(k: str) -> bool:
-        return bool(info.get(k))
-    def val(k: str) -> str:
-        return info.get(k, "unknown")
-
-    required = ["name", "date", "time", "party_size"]
-    missing = [k for k in required if not has(k)]
-
-    summary = (
-        f"BOOKING INFO ALREADY COLLECTED:\n"
-        f"- Name: {val('name')}\n"
-        f"- Date: {val('date')}\n"
-        f"- Time: {val('time')}\n"
-        f"- Party size: {val('party_size')}\n"
-        f"- Phone: {val('phone')} (optional)\n\n"
-    )
-
-    if missing:
-        summary += (
-            f"MISSING REQUIRED FIELDS: {', '.join(missing)}\n"
-            f"ACTION: Ask ONLY for the missing fields listed above. DO NOT ask for fields that are already known.\n"
-            f"DO NOT ask for: {', '.join([k for k in required if has(k)])}"
-        )
-    else:
-        summary += (
-            "ALL REQUIRED FIELDS COLLECTED!\n"
-            "ACTION: If user declined phone (said 'no'), immediately call book_table tool NOW with the information above. "
-            "Do not ask for anything else."
-        )
-
-    return summary
 
 def run_agent(input_text: str, thread_id: str = "default") -> str:
     """
@@ -177,33 +71,8 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
         # Just pass the new user message and the thread_id for memory persistence
         config = {"configurable": {"thread_id": thread_id}}
         
-        # Maintain per-thread booking state
-        state = booking_state.get(thread_id, {})
-        updates = extract_booking_info(input_text)
-        if updates:
-            state.update({k: v for k, v in updates.items() if v})
-            booking_state[thread_id] = state
-            print(f"[agent] extracted updates for {thread_id}: {updates}")
-        print(f"[agent] booking_state for {thread_id}: {state}")
-
         # Prepare messages for this turn
-        messages = []
-        if thread_id not in seen_threads:
-            # Inject the base policy prompt once per thread
-            messages.append(("system", system_prompt))
-            seen_threads.add(thread_id)
-
-        # Build user message with embedded booking context if available
-        # This way the LLM sees it as part of the user's context, not a separate system instruction
-        user_message = input_text
-        if state:
-            summary_msg = summarize_booking_info(state)
-            print(f"[agent] summary for {thread_id}: {summary_msg}")
-            # Prepend the booking state to the user message as context
-            user_message = f"[BOOKING CONTEXT: {summary_msg}]\n\nUser message: {input_text}"
-
-        # Append the user's message; the checkpointer supplies prior history
-        messages.append(("user", user_message))
+        messages = [("user", input_text)]
 
         response = agent.invoke({"messages": messages}, config=config)
         

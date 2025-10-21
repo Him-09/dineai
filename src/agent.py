@@ -32,13 +32,23 @@ memory = MemorySaver()
 
 # Define system prompt for the agent
 system_prompt = """You are a professional restaurant assistant AI helping customers with reservations, menu inquiries, and general questions about our restaurant.
-Be friendly, helpful, and ensure all required information is collected before making any reservation."""
 
-# Create ReAct agent with memory and system prompt
+IMPORTANT: You have access to conversation history. Always check what information the customer has already provided before asking for it again.
+
+When handling reservations:
+- Review the conversation history to see what information has already been collected
+- Only ask for missing information, never repeat questions
+- Required information: customer name, date, time, party size
+- Once you have all required information, proceed with the booking using the book_table tool
+
+Be friendly, helpful, and respect that customers have already given you information."""
+
+# Create ReAct agent with memory and system prompt  
 agent = create_react_agent(
     model=llm, 
     tools=tools,
-    checkpointer=memory
+    checkpointer=memory,
+    state_modifier=system_prompt
 )
 
 def run_agent(input_text: str, thread_id: str = "default") -> str:
@@ -55,25 +65,13 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
     try:
         print(f"Processing query: {input_text}")
         
-        # LangGraph agents with memory expect input as a dictionary with "messages" key
-        # and a config with thread_id for memory persistence
+        # LangGraph agents with checkpointer automatically maintain conversation history
+        # Just pass the new user message and the thread_id for memory persistence
         config = {"configurable": {"thread_id": thread_id}}
         
-        # Get existing conversation state to check if this is a new conversation
-        state = memory.get(config)
-        
-        # If this is a new conversation (no existing state), include the system prompt
-        if state is None or not state:
-            messages = [
-                ("system", system_prompt),
-                ("user", input_text)
-            ]
-        else:
-            # For ongoing conversations, just add the new user message
-            # The checkpointer will maintain the full conversation history including the system prompt
-            messages = [("user", input_text)]
-        
-        response = agent.invoke({"messages": messages}, config=config)
+        # Always send only the new user message
+        # The checkpointer will automatically include the full conversation history
+        response = agent.invoke({"messages": [("user", input_text)]}, config=config)
         
         # Extract the final message from the response
         if response and "messages" in response:

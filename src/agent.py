@@ -117,13 +117,30 @@ def extract_booking_info(text: str) -> dict[str, str]:
     return info
 
 def summarize_booking_info(info: dict[str, str]) -> str:
+    def has(k: str) -> bool:
+        return bool(info.get(k))
     def val(k: str) -> str:
         return info.get(k, "unknown")
-    return (
+
+    required = ["name", "date", "time", "party_size"]
+    missing = [k for k in required if not has(k)]
+
+    summary = (
         f"Known booking details so far -> name: {val('name')}, date: {val('date')}, "
         f"time: {val('time')}, party_size: {val('party_size')}, phone: {val('phone')}.\n"
-        "Only ask for the missing items. If all required fields are present (name, date, time, party_size), proceed to book_table."
     )
+
+    if missing:
+        summary += (
+            "Missing fields: " + ", ".join(missing) + ". "
+            "Ask ONLY for these missing items in a single, concise question. Do not ask for any already-known field."
+        )
+    else:
+        summary += (
+            "All required fields are present. Proceed to use the book_table tool now without asking for more details."
+        )
+
+    return summary
 
 def run_agent(input_text: str, thread_id: str = "default") -> str:
     """
@@ -149,6 +166,8 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
         if updates:
             state.update({k: v for k, v in updates.items() if v})
             booking_state[thread_id] = state
+            print(f"[agent] extracted updates for {thread_id}: {updates}")
+        print(f"[agent] booking_state for {thread_id}: {state}")
 
         # Prepare messages for this turn
         messages = []
@@ -159,7 +178,9 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
 
         # Inject a lightweight dynamic context with the currently known booking details
         if state:
-            messages.append(("system", summarize_booking_info(state)))
+            summary_msg = summarize_booking_info(state)
+            print(f"[agent] summary for {thread_id}: {summary_msg}")
+            messages.append(("system", summary_msg))
 
         # Append the user's message; the checkpointer supplies prior history
         messages.append(("user", input_text))

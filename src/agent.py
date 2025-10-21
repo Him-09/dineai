@@ -1,4 +1,5 @@
 import os
+import re
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
@@ -32,7 +33,15 @@ memory = MemorySaver()
 
 # Define system prompt for the agent
 system_prompt = """You are a professional restaurant assistant AI helping customers with reservations, menu inquiries, and general questions about our restaurant.
-Be friendly, helpful, and respect that customers have already given you information."""
+
+Conversation policy:
+- Always review conversation history before asking questions.
+- Maintain an internal checklist for bookings: name, date, time, party size, optional phone.
+- Ask ONLY for missing items. Do not repeat requests for information already provided earlier.
+- When appropriate, confirm what you have (e.g., "I have you down for 4 guests tomorrow at 7 PM") and ask just the missing field in a single compact question.
+- Once all required fields are available, proceed to use the book_table tool.
+
+Tone: warm, concise, professional."""
 
 # Create ReAct agent with memory and system prompt  
 agent = create_react_agent(
@@ -44,6 +53,77 @@ agent = create_react_agent(
 # Keep track of which thread_ids have already received the system prompt
 # This is process-local and ensures the system prompt is only injected once per conversation thread
 seen_threads = set()
+
+# Lightweight per-thread slot tracker (process-local)
+# Stores what booking details we've already extracted from user messages
+booking_state: dict[str, dict[str, str]] = {}
+
+NAME_PATTERNS = [
+    re.compile(r"(?:my name is|i am|i'm|this is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)", re.I),
+]
+DATE_PATTERNS = [
+    re.compile(r"\b(today|tomorrow|tonight)\b", re.I),
+    re.compile(r"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", re.I),
+    re.compile(r"\b(\d{4}-\d{1,2}-\d{1,2})\b"),               # 2025-10-21
+    re.compile(r"\b(\d{1,2}/\d{1,2}(?:/\d{2,4})?)\b"),        # 10/21 or 10/21/2025
+]
+TIME_PATTERNS = [
+    re.compile(r"\b(\d{1,2}:\d{2}\s?(?:am|pm)?)\b", re.I),    # 7:30 pm
+    re.compile(r"\b(\d{1,2}\s?(?:am|pm))\b", re.I),            # 7 pm
+    re.compile(r"\b(at\s+\d{1,2}(?::\d{2})?\s?(?:am|pm)?)\b", re.I),
+]
+PARTY_PATTERNS = [
+    re.compile(r"\bfor\s+(\d+)\b"),
+    re.compile(r"\b(\d+)\s+(?:people|guests|persons)\b", re.I),
+]
+PHONE_PATTERNS = [
+    re.compile(r"\b(\+?\d[\d\-\s]{7,}\d)\b"),
+]
+
+def extract_booking_info(text: str) -> dict[str, str]:
+    info: dict[str, str] = {}
+    # name
+    for pat in NAME_PATTERNS:
+        m = pat.search(text)
+        if m:
+            info["name"] = m.group(1).strip()
+            break
+    # date
+    for pat in DATE_PATTERNS:
+        m = pat.search(text)
+        if m:
+            info["date"] = m.group(1).strip()
+            break
+    # time
+    for pat in TIME_PATTERNS:
+        m = pat.search(text)
+        if m:
+            # drop leading 'at '
+            val = m.group(1).strip()
+            info["time"] = re.sub(r"^at\s+", "", val, flags=re.I)
+            break
+    # party size
+    for pat in PARTY_PATTERNS:
+        m = pat.search(text)
+        if m:
+            info["party_size"] = m.group(1).strip()
+            break
+    # phone
+    for pat in PHONE_PATTERNS:
+        m = pat.search(text)
+        if m:
+            info["phone"] = m.group(1).strip()
+            break
+    return info
+
+def summarize_booking_info(info: dict[str, str]) -> str:
+    def val(k: str) -> str:
+        return info.get(k, "unknown")
+    return (
+        f"Known booking details so far -> name: {val('name')}, date: {val('date')}, "
+        f"time: {val('time')}, party_size: {val('party_size')}, phone: {val('phone')}.\n"
+        "Only ask for the missing items. If all required fields are present (name, date, time, party_size), proceed to book_table."
+    )
 
 def run_agent(input_text: str, thread_id: str = "default") -> str:
     """
@@ -63,14 +143,25 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
         # Just pass the new user message and the thread_id for memory persistence
         config = {"configurable": {"thread_id": thread_id}}
         
-        # Decide whether to include the system prompt for this thread
+        # Maintain per-thread booking state
+        state = booking_state.get(thread_id, {})
+        updates = extract_booking_info(input_text)
+        if updates:
+            state.update({k: v for k, v in updates.items() if v})
+            booking_state[thread_id] = state
+
+        # Prepare messages for this turn
         messages = []
         if thread_id not in seen_threads:
-            # inject system prompt only the first time we see this thread
+            # Inject the base policy prompt once per thread
             messages.append(("system", system_prompt))
             seen_threads.add(thread_id)
 
-        # Always append the new user message; the checkpointer will supply prior history
+        # Inject a lightweight dynamic context with the currently known booking details
+        if state:
+            messages.append(("system", summarize_booking_info(state)))
+
+        # Append the user's message; the checkpointer supplies prior history
         messages.append(("user", input_text))
 
         response = agent.invoke({"messages": messages}, config=config)

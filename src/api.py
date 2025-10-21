@@ -230,6 +230,24 @@ async def demo_page():
     </html>
     """, status_code=404)
 
+# Catch-all route for React Router (must be last)
+@app.get("/{full_path:path}", response_class=HTMLResponse, include_in_schema=False)
+async def catch_all(full_path: str):
+    """Catch-all route to serve React app for client-side routing"""
+    # Don't intercept API routes
+    if full_path.startswith(("api/", "docs", "redoc", "openapi.json")):
+        return {"error": "Not found"}
+    
+    root = os.path.dirname(os.path.dirname(__file__))
+    static_dir = os.path.join(root, "static")
+    react_index = os.path.join(static_dir, "app", "index.html")
+    
+    if os.path.exists(react_index):
+        with open(react_index, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    
+    return {"error": "Frontend not built"}
+
 @app.get("/api/stats")
 async def get_api_stats():
     """Get API usage statistics for the demo"""

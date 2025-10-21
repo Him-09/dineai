@@ -4,6 +4,7 @@ import path from 'node:path'
 
 export default defineConfig({
   plugins: [react()],
+  base: '/',  // Ensure assets are referenced from root
   server: {
     port: 5173,
     strictPort: true,

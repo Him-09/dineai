@@ -67,6 +67,7 @@ logs/
 
 # Allow voice demo files
 !static/app/voice/sample_call.mp3
+!static/app/voice/demo_call.mp3
 
 # Desktop app
 desktop-app/

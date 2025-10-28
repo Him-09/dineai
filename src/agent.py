@@ -53,6 +53,106 @@ agent = create_react_agent(
 # Track which threads have received the system prompt
 seen_threads = set()
 
+# Lightweight per-thread slot tracker (process-local)
+# Stores what booking details we've already extracted from user messages
+booking_state: dict[str, dict[str, str]] = {}
+
+# Regex patterns to extract booking information
+NAME_PATTERNS = [
+    re.compile(r"(?:my name is|i am|i'm|this is|call me|name'?s?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)", re.I),
+    re.compile(r"^([A-Z][a-z]+)(?:\s+for\s+\d+)?$", re.I),  # Just a name like "dan" or "Dan for 5"
+]
+DATE_PATTERNS = [
+    re.compile(r"\b(today|tomorrow|tonight)\b", re.I),
+    re.compile(r"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", re.I),
+    re.compile(r"\b(\d{4}-\d{1,2}-\d{1,2})\b"),               # 2025-10-21
+    re.compile(r"\b(\d{1,2}/\d{1,2}(?:/\d{2,4})?)\b"),        # 10/21 or 10/21/2025
+    re.compile(r"\b(next\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b", re.I),
+]
+TIME_PATTERNS = [
+    re.compile(r"\b(\d{1,2}:\d{2}\s?(?:am|pm)?)\b", re.I),    # 7:30 pm
+    re.compile(r"\b(\d{1,2}\s?(?:am|pm))\b", re.I),            # 7 pm or 8pm
+    re.compile(r"\bat\s+(\d{1,2}(?::\d{2})?\s?(?:am|pm)?)\b", re.I),
+]
+PARTY_PATTERNS = [
+    re.compile(r"\bfor\s+(\d+)\s+(?:people|guests|persons|ppl)?\b", re.I),
+    re.compile(r"\b(\d+)\s+(?:people|guests|persons|ppl)\b", re.I),
+    re.compile(r"\bparty\s+of\s+(\d+)\b", re.I),
+]
+PHONE_PATTERNS = [
+    re.compile(r"\b(\+?\d[\d\-\s]{7,}\d)\b"),
+]
+
+def extract_booking_info(text: str) -> dict[str, str]:
+    """Extract booking information from user text using regex patterns."""
+    info: dict[str, str] = {}
+    
+    # Extract name
+    for pat in NAME_PATTERNS:
+        m = pat.search(text)
+        if m:
+            info["name"] = m.group(1).strip().title()
+            break
+    
+    # Extract date
+    for pat in DATE_PATTERNS:
+        m = pat.search(text)
+        if m:
+            info["date"] = m.group(1).strip()
+            break
+    
+    # Extract time
+    for pat in TIME_PATTERNS:
+        m = pat.search(text)
+        if m:
+            val = m.group(1).strip()
+            # Clean up "at " prefix if present
+            info["time"] = re.sub(r"^at\s+", "", val, flags=re.I)
+            break
+    
+    # Extract party size
+    for pat in PARTY_PATTERNS:
+        m = pat.search(text)
+        if m:
+            info["party_size"] = m.group(1).strip()
+            break
+    
+    # Extract phone
+    for pat in PHONE_PATTERNS:
+        m = pat.search(text)
+        if m:
+            info["phone"] = m.group(1).strip()
+            break
+    
+    return info
+
+def summarize_booking_info(info: dict[str, str]) -> str:
+    """Create a dynamic system message summarizing known booking details."""
+    def has(k: str) -> bool:
+        return bool(info.get(k))
+    def val(k: str) -> str:
+        return info.get(k, "unknown")
+
+    required = ["name", "date", "time", "party_size"]
+    missing = [k for k in required if not has(k)]
+
+    summary = (
+        f"BOOKING STATE - name: {val('name')}, date: {val('date')}, "
+        f"time: {val('time')}, party_size: {val('party_size')}, phone: {val('phone')}.\n"
+    )
+
+    if missing:
+        summary += (
+            "MISSING: " + ", ".join(missing) + ". "
+            "Ask ONLY for these missing fields in ONE concise question. DO NOT ask for fields you already have."
+        )
+    else:
+        summary += (
+            "All required fields present. Call book_table tool NOW with the information you have."
+        )
+
+    return summary
+
 
 
 def run_agent(input_text: str, thread_id: str = "default") -> str:
@@ -73,6 +173,15 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
         # Just pass the new user message and the thread_id for memory persistence
         config = {"configurable": {"thread_id": thread_id}}
         
+        # Maintain per-thread booking state
+        state = booking_state.get(thread_id, {})
+        updates = extract_booking_info(input_text)
+        if updates:
+            state.update({k: v for k, v in updates.items() if v})
+            booking_state[thread_id] = state
+            print(f"[agent] extracted updates for {thread_id}: {updates}")
+        print(f"[agent] booking_state for {thread_id}: {state}")
+        
         # Prepare messages for this turn
         messages = []
         
@@ -80,6 +189,12 @@ def run_agent(input_text: str, thread_id: str = "default") -> str:
         if thread_id not in seen_threads:
             messages.append(("system", system_prompt))
             seen_threads.add(thread_id)
+        
+        # Inject dynamic booking context if we have any state
+        if state:
+            summary_msg = summarize_booking_info(state)
+            print(f"[agent] summary for {thread_id}: {summary_msg}")
+            messages.append(("system", summary_msg))
         
         messages.append(("user", input_text))
 

@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 from typing import Optional
 import uuid
@@ -175,6 +175,31 @@ if os.path.exists(static_path):
         voice_path = os.path.join(react_built, "voice")
         if os.path.exists(voice_path):
             app.mount("/voice", StaticFiles(directory=voice_path), name="voice_files")
+
+# Serve favicon files from root
+@app.get("/uten.svg", include_in_schema=False)
+async def serve_uten_favicon():
+    """Serve uten.svg favicon from root"""
+    favicon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "app", "uten.svg")
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path, media_type="image/svg+xml")
+    raise HTTPException(status_code=404, detail="Favicon not found")
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def serve_favicon_ico():
+    """Serve favicon.ico from root"""
+    favicon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "app", "favicon.ico")
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path, media_type="image/x-icon")
+    raise HTTPException(status_code=404, detail="Favicon not found")
+
+@app.get("/favicon.svg", include_in_schema=False)
+async def serve_favicon_svg():
+    """Serve favicon.svg from root"""
+    favicon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "app", "favicon.svg")
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path, media_type="image/svg+xml")
+    raise HTTPException(status_code=404, detail="Favicon not found")
 
 # Serve React app at root for production
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)

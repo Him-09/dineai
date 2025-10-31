@@ -177,6 +177,22 @@ if os.path.exists(static_path):
             app.mount("/voice", StaticFiles(directory=voice_path), name="voice_files")
 
 # Serve favicon files from root
+@app.get("/favicon-32x32.png", include_in_schema=False)
+async def serve_favicon_32():
+    """Serve 32x32 favicon from root"""
+    favicon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "app", "favicon-32x32.png")
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path, media_type="image/png")
+    raise HTTPException(status_code=404, detail="Favicon not found")
+
+@app.get("/favicon-16x16.png", include_in_schema=False)
+async def serve_favicon_16():
+    """Serve 16x16 favicon from root"""
+    favicon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "app", "favicon-16x16.png")
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path, media_type="image/png")
+    raise HTTPException(status_code=404, detail="Favicon not found")
+
 @app.get("/utensils.png", include_in_schema=False)
 async def serve_utensils_favicon():
     """Serve utensils.png favicon from root"""

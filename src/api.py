@@ -171,10 +171,24 @@ if os.path.exists(static_path):
         if os.path.exists(react_assets):
             app.mount("/assets", StaticFiles(directory=react_assets), name="react_assets")
             
+        # Mount scribbles at root level for hero section
+        scribbles_path = os.path.join(react_built, "scribbles")
+        if os.path.exists(scribbles_path):
+            app.mount("/scribbles", StaticFiles(directory=scribbles_path), name="scribbles")
+            
         # Mount voice files at root level for demo functionality
         voice_path = os.path.join(react_built, "voice")
         if os.path.exists(voice_path):
             app.mount("/voice", StaticFiles(directory=voice_path), name="voice_files")
+
+# Serve audio file from root
+@app.get("/audio.mp3", include_in_schema=False)
+async def serve_audio():
+    """Serve audio.mp3 from root"""
+    audio_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "app", "audio.mp3")
+    if os.path.exists(audio_path):
+        return FileResponse(audio_path, media_type="audio/mpeg")
+    raise HTTPException(status_code=404, detail="Audio file not found")
 
 # Serve favicon files from root
 @app.get("/favicon-32x32.png", include_in_schema=False)
